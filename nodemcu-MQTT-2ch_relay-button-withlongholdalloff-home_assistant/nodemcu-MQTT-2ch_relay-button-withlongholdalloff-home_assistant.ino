@@ -29,6 +29,33 @@
       retain: true
       optimistic: false
 
+automation:
+- alias: new on topic from switch
+  trigger:
+    platform: state
+    entity_id: sensor.allonoff
+    from: "OFF"
+    to: "ON"
+  action:
+    service: scene.turn_on
+    entity_id: scene.loungeon
+
+- alias: new off topic from switch
+  trigger:
+    platform: state
+    entity_id: sensor.allonoff
+    from: "ON"
+    to: "OFF"
+  action:
+    service: scene.turn_on
+    entity_id: scene.loungeoff
+
+sensor:
+    - platform: mqtt
+      state_topic: 'changeme/allonoff/switch'
+      name: allonoff
+
+
    Samuel M. - v1.1 - 08.2016
    If you like this example, please add a star! Thank you!
    https://github.com/mertenats/open-home-automation
