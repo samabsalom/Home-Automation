@@ -21,39 +21,63 @@
 
 
    Configuration (HA) :
-    switch:
-      platform: mqtt
-      name: 'Office Switch'
-      state_topic: 'changeme/1/status'
-      command_topic: 'changeme/1/set'
-      retain: true
-      optimistic: false
+switch:
+  platform: mqtt
+  name: 'Office Switch'
+  state_topic: 'changeme/1/status'
+  command_topic: 'changeme/1/set'
+  retain: true
+  optimistic: false
 
-      automation:
-      - alias: new on topic from switch
-        trigger:
-          platform: state
-          entity_id: sensor.allonoff
-          from: "OFF"
-          to: "ON"
-        action:
-          service: scene.turn_on
+sensor:
+  - platform: mqtt
+    state_topic: 'changeme/allonoff/switch'
+    name: allonoff
+
+script:
+  loungeon:
+    alias: Lounge on
+    sequence:
+      - service: homeassistant.turn_on
+        data:
           entity_id: scene.loungeon
-
-      - alias: new off topic from switch
-        trigger:
-          platform: state
-          entity_id: sensor.allonoff
-          from: "ON"
-          to: "OFF"
-        action:
-          service: scene.turn_on
+      - service: mqtt.publish
+        data:
+          payload: waiting
+          topic: loungelight/allonoff/switch
+          qos: 0
+          retain: true
+  loungeoff:
+    alias: Lounge off
+    sequence:
+      - service: homeassistant.turn_on
+        data:
           entity_id: scene.loungeoff
+      - service: mqtt.publish
+        data:
+          payload: waiting
+          topic: loungelight/allonoff/switch
+          qos: 0
+          retain: true
 
-      sensor:
-          - platform: mqtt
-            state_topic: 'changeme/allonoff/switch'
-            name: allonoff
+automation
+  - alias: all on
+    trigger:
+      platform: state
+      entity_id: sensor.allonoff
+      to: "ON"
+    action:
+      service: homeassistant.turn_on
+      entity_id: script.loungeon
+  - alias: all off
+    trigger:
+      platform: state
+      entity_id: sensor.allonoff
+      to: "OFF"
+    action:
+      service: homeassistant.turn_on
+      entity_id: script.loungeoff
+
 
    Samuel M. - v1.1 - 08.2016
    If you like this example, please add a star! Thank you!
