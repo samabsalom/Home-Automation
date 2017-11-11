@@ -101,6 +101,11 @@ const PROGMEM uint16_t MQTT_SERVER_PORT = 1883;
 const PROGMEM char* MQTT_USER = "changeme";
 const PROGMEM char* MQTT_PASSWORD = "raspberry";
 
+#define OTA_UPDATE //Uncomment if using OTA update
+#define OTApassword "lounge" // change this to whatever password you want to use when you upload OTA
+#define OTAname "lounge-lightswitch" //MQTT device for broker and OTA name
+int OTAport = 8266;
+
 // MQTT: topics
 const PROGMEM char* MQTT_SWITCH_STATUS_TOPIC1 = "changeme/1/status"; //these are the topics for the relays attached to the board
 const PROGMEM char* MQTT_SWITCH_COMMAND_TOPIC1 = "changeme/1/switch"; //
@@ -124,6 +129,12 @@ const PROGMEM uint8_t BUTTON_PIN1 = 0;
 const PROGMEM uint8_t BUTTON_PIN2 = 2;
 const PROGMEM uint8_t RELAY_PIN1= 5;
 const PROGMEM uint8_t RELAY_PIN2= 4;
+
+#ifdef OTA_UPDATE
+  #include <ESP8266mDNS.h>
+  #include <WiFiUdp.h>
+  #include <ArduinoOTA.h>
+#endif
 
 
 WiFiClient wifiClient;
@@ -373,31 +384,68 @@ void setup() {
   setSwitchState2();
 
 
+  setupWifi();
 
-  // init the WiFi connection
-  Serial.println();
-  Serial.println();
-  Serial.print("INFO: Connecting to ");
-  WiFi.mode(WIFI_STA);
-  Serial.println(WIFI_SSID);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("");
-  Serial.println("INFO: WiFi connected");
-  Serial.println("INFO: IP address: ");
-  Serial.println(WiFi.localIP());
-
-  // init the MQTT connection
-  client.setServer(MQTT_SERVER_IP, MQTT_SERVER_PORT);
-  client.setCallback(callback);
+  #ifdef OTA_UPDATE
+    setupOTA();
+  #endif
 }
 
+void setupWifi();{
+    // init the WiFi connection
+    Serial.println();
+    Serial.println();
+    Serial.print("INFO: Connecting to ");
+    WiFi.mode(WIFI_STA);
+    Serial.println(WIFI_SSID);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+    }
+
+    Serial.println("");
+    Serial.println("INFO: WiFi connected");
+    Serial.println("INFO: IP address: ");
+    Serial.println(WiFi.localIP());
+
+    // init the MQTT connection
+    client.setServer(MQTT_SERVER_IP, MQTT_SERVER_PORT);
+    client.setCallback(callback);
+}
+void setupOTA (){
+    ArduinoOTA.setPort(OTAport);
+    ArduinoOTA.setHostname(OTAname);
+    ArduinoOTA.setPassword((const char *)OTApassword);
+
+    ArduinoOTA.onStart([]() {
+      Serial.println("Start");
+    });
+    ArduinoOTA.onEnd([]() {
+      Serial.println("\nEnd");
+      ESP.restart();
+    });
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    });
+    ArduinoOTA.onError([](ota_error_t error) {
+      Serial.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    });
+    ArduinoOTA.begin();
+    Serial.print("OTA running");
+}
+
+
 void loop() {
+  #ifdef OTA_UPDATE
+  ArduinoOTA.handle();
+  #endif
   // keep watching the push button:
   button1.tick();
   button2.tick();
